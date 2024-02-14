@@ -19,8 +19,11 @@ class Tag(models.Model):
     def __str__(self):
         return self.name
     
+    
+    
 
 class Post(models.Model):
+     
     class Meta: 
         ordering = ["-publish_date"]
 
@@ -36,3 +39,7 @@ class Post(models.Model):
 
     author = models.ForeignKey(Profile, on_delete=models.PROTECT)
     tags = models.ManyToManyField(Tag, blank=True)
+
+
+    def get_posts_by_tag(tag_name):
+        return Post.objects.filter(tags__name__iexact=tag_name)
