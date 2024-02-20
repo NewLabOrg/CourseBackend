@@ -8,6 +8,7 @@ class Profile(models.Model):
     )
     website = models.URLField(blank=True)
     bio = models.CharField(max_length=240, blank=True)
+    profile_pic = models.ImageField(null = True, blank = True, upload_to="images/profile/" )
 
     def __str__(self):
         return self.user.get_username()
@@ -36,10 +37,10 @@ class Post(models.Model):
     date_modified = models.DateTimeField(auto_now=True)
     publish_date = models.DateTimeField(blank=True, null=True)
     published = models.BooleanField(default=False)
+    image = models.ImageField(null = True, blank = True, upload_to="images/profile/" )
 
     author = models.ForeignKey(Profile, on_delete=models.PROTECT)
     tags = models.ManyToManyField(Tag, blank=True)
-
 
     def get_posts_by_tag(tag_name):
         return Post.objects.filter(tags__name__iexact=tag_name)
