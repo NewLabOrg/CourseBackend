@@ -21,7 +21,16 @@ class Tag(models.Model):
         return self.name
     
     
-    
+class News(models.Model):
+    title = models.CharField(max_length=255, unique=True)
+    body = models.TextField()
+    image = models.ImageField(null = True, blank = True, upload_to="images/profile/" )
+    date_created = models.DateTimeField(auto_now_add=True)
+    slug = models.SlugField(max_length=255, unique=True)
+    subtitle = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return self.title
 
 class Post(models.Model):
      
