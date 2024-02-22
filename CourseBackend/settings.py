@@ -27,6 +27,8 @@ SECRET_KEY = 'django-insecure-l$_imy-yw8wffr&oh7v$9!dx-(dikp0^63-negc#=x^hhz(x))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Add the following lines to serve static files for the Django admin
+
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ORIGIN_WHITELIST = [
@@ -96,7 +98,6 @@ DATABASES = {
         'PORT': '5432',
     }
 }
-DEBUG = False
 SECRET_KEY = 'something-secret'
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'domain.com']
 
@@ -135,8 +136,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
-
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -150,3 +151,4 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 GRAPHENE = {
     "SCHEMA": "projects.schema.schema",  
 }
+

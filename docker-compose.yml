@@ -13,30 +13,7 @@ services:
       - ./.env
     ports:
       - "5432:5432"
-    networks: // Add the 'networks' section
-      - mynetwork
 
-  db_image: 
-    image: mongo
-    restart: always 
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
-    ports:
-      - "27017:27017"
-    networks: // Add the 'networks' section
-      - mynetwork
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    networks: // Add the 'networks' section
-      - mynetwork
 
 volumes:
   postgres_data:

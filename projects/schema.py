@@ -30,8 +30,24 @@ class NewsType(DjangoObjectType):
         return ''
     
 class PostType(DjangoObjectType):
+    image_url = String()
+
     class Meta:
         model = models.Post
+        fields = ("title", "slug", "subtitle", "body", "meta_description", "date_created", "date_modified", "publish_date", "published", "image", "image_url", "author", "tags")
+
+    def resolve_image_url(self, info):
+        if self.image:
+            return info.context.build_absolute_uri(self.image.url)
+        return ''
+    class Meta:
+        model = models.Post
+        fields = ("title", "slug", "subtitle", "body", "meta_description", "date_created", "date_modified", "publish_date", "published", "image", "image_url", "author", "tags")
+
+    def resolve_image_url(self, info):
+        if self.image:
+            return info.context.build_absolute_uri(self.image.url)
+        return ''
 
 class TagType(DjangoObjectType):
     class Meta: 
