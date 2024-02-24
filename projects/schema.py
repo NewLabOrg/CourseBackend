@@ -60,6 +60,7 @@ class Query(graphene.ObjectType):
     post_by_author = graphene.List(PostType, username=graphene.String(required=True))
     posts_by_tag = graphene.List(PostType, tag=graphene.String(required=True))
     get_news = graphene.List(NewsType)
+    new_by_slug = graphene.Field(NewsType, slug=graphene.String(required=True))
 
     def resolve_all_posts(root, _):
         return models.Post.objects.prefetch_related("tags").select_related("author").all()
@@ -75,6 +76,9 @@ class Query(graphene.ObjectType):
     
     def resolve_post_by_slug(root, _, slug):
         return models.Post.objects.get(slug=slug)
+    
+    def resolve_new_by_slug(root, _, slug):
+        return models.News.objects.get(slug=slug)
 
     def resolve_posts_by_author(root, _, username):
         return models.Post.objects.prefetch_related("tags").select_related("author").filter(author__user__username=username)
