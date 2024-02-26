@@ -81,7 +81,13 @@ class Query(graphene.ObjectType):
     get_news = graphene.List(NewsType)
     new_by_slug = graphene.Field(NewsType, slug=graphene.String(required=True))
     viewer = graphene.Field(UserType, token=graphene.String(required=True))
+    user = graphene.Field(UserType, username=graphene.String(required=True))
 
+    def resolve_user(self, info, username):
+        try:
+            return User.objects.get(username=username)
+        except User.DoesNotExist:
+            return None
     @login_required
     def resolve_viewer(self, info, **kwargs):
         return info.context.user
@@ -151,7 +157,7 @@ class CreateUser(Mutation):
         )
         user.save()
 
-        author = models.Author(user=user)
+        author = models.Profile(user=user)  # Исправленная строка
         author.save()
 
         profile = models.Profile(user=user, website=website, bio=bio)
@@ -159,6 +165,34 @@ class CreateUser(Mutation):
 
         return CreateUser(user=user)
 
+    class Arguments:
+        username = String(required=True)
+        password = String(required=True)
+        email = String(required=True)
+        firstname = String(required=True)
+        lastname = String(required=True)
+        website = String()
+        bio = String()
+
+    @transaction.atomic
+    def mutate(self, info, username, password, email, firstname, lastname, website=None, bio=None):
+        user = User(
+            username=username,
+            password=make_password(password),
+            email=email,
+            first_name=firstname,
+            last_name=lastname,
+        )
+        user.save()
+
+        profile = models.Profile(user=user)
+        profile.save()
+
+        profile.website = website
+        profile.bio = bio
+        profile.save()
+        
+        return CreateUser(user=user)
 class Mutation(graphene.ObjectType):
     create_user = CreateUser.Field()
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
