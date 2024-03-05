@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 
+
+
 class Profile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -8,10 +10,14 @@ class Profile(models.Model):
     )
     website = models.URLField(blank=True)
     bio = models.CharField(max_length=240, blank=True)
-    profile_pic = models.ImageField(null = True, blank = True, upload_to="images/profile/" )
+    image = models.ImageField(upload_to='images/avatar', blank=True, null=True)
 
     def __str__(self):
         return self.user.get_username()
+
+
+
+
     
 
 class Tag(models.Model):

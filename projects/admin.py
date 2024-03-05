@@ -5,6 +5,7 @@ from .models import Profile, Tag, Post, News
 class ProfileAdmin(admin.ModelAdmin):
     model = Profile
 
+
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     model = Tag

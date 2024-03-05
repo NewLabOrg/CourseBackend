@@ -1,3 +1,4 @@
+from cProfile import Profile
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from graphene_django import DjangoObjectType
@@ -10,6 +11,10 @@ from django.db import transaction
 from graphene import Mutation, String, Field
 from graphql import GraphQLError
 from django.contrib.auth.hashers import make_password
+from graphene_file_upload.scalars import Upload
+from django.core.files.base import ContentFile
+import uuid
+from .models import Profile
 
 
 from projects import models
@@ -31,6 +36,30 @@ class UserType(DjangoObjectType):
         if hasattr(self, 'profile'):
             return self.profile.bio
         return None       
+    
+    def resolve_image_url(self, info):
+        if self.image:
+            return info.context.build_absolute_uri(self.image.url)
+        return None
+
+class UploadProfilePic(graphene.Mutation):
+    class Arguments:
+        file = Upload(required=True)
+
+    success = graphene.Boolean()
+    url = graphene.String()
+    
+    # @login_required
+    def mutate(self, info, file, **kwargs):
+        user = info.context.user
+        profile, created = Profile.objects.get_or_create(user=user)
+
+        filename = f"{uuid.uuid4()}-{file.name}"
+        profile.image.save(filename, ContentFile(file.read()), save=True)
+        
+        url = info.context.build_absolute_uri(profile.image.url)
+
+        return UploadProfilePic(success=True, url=url)
 
 class AuthorType(DjangoObjectType):
     profile_pic_url = String()
@@ -133,6 +162,8 @@ class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
     @classmethod
     def resolve(cls, root, info, **kwargs):
         return cls(user=info.context.user)
+    
+
 
 class CreateUser(Mutation):
     user = Field(UserType)
@@ -145,9 +176,10 @@ class CreateUser(Mutation):
         lastname = String(required=True)
         website = String()
         bio = String()
+        image = Upload()
 
     @transaction.atomic
-    def mutate(self, info, username, password, email, firstname, lastname, website=None, bio=None):
+    def mutate(self, info, username, password, email, firstname, lastname, website=None, bio=None,  image=None):
         user = User(
             username=username,
             password=make_password(password),
@@ -157,10 +189,12 @@ class CreateUser(Mutation):
         )
         user.save()
 
-        author = models.Profile(user=user)  # Исправленная строка
+        author = models.Profile(user=user)  
         author.save()
 
         profile = models.Profile(user=user, website=website, bio=bio)
+        if image:
+            profile.image = image
         profile.save()
 
         return CreateUser(user=user)
@@ -198,5 +232,6 @@ class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
+    upload_profile_pic = UploadProfilePic.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
