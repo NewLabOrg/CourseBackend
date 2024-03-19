@@ -23,6 +23,8 @@ from projects import models
 class UserType(DjangoObjectType):
     website = graphene.String()
     bio = graphene.String()
+    profile_image_url = graphene.String()
+
     class Meta:
         model = get_user_model()
         fields = "__all__"
@@ -37,9 +39,11 @@ class UserType(DjangoObjectType):
             return self.profile.bio
         return None       
     
-    def resolve_image_url(self, info):
-        if self.image:
-            return info.context.build_absolute_uri(self.image.url)
+
+    def resolve_profile_image_url(self, info):
+        
+        if hasattr(self, 'profile') and self.profile.image:
+            return info.context.build_absolute_uri(self.profile.image.url)
         return None
 
 class UploadProfilePic(graphene.Mutation):
@@ -49,7 +53,6 @@ class UploadProfilePic(graphene.Mutation):
     success = graphene.Boolean()
     url = graphene.String()
     
-    # @login_required
     def mutate(self, info, file, **kwargs):
         user = info.context.user
         profile, created = Profile.objects.get_or_create(user=user)
