@@ -1,7 +1,14 @@
 from django.db import models
 from django.conf import settings
 
+def user_directory_path(instance, filename):
+    return 'images/avatar/{0}/{1}'.format(instance.user.username, filename)
 
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
 
 class Profile(models.Model):
     user = models.OneToOneField(
@@ -10,22 +17,16 @@ class Profile(models.Model):
     )
     website = models.URLField(blank=True)
     bio = models.CharField(max_length=240, blank=True)
-    image = models.ImageField(upload_to='images/avatar', blank=True, null=True)
+    image = models.ImageField(upload_to=user_directory_path, blank=True, null=True)
 
     def __str__(self):
         return self.user.get_username()
 
-
-
-
-    
-
-class Tag(models.Model):
-    name = models.CharField(max_length=50, unique=True)
-    
-    def __str__(self):
-        return self.name
-    
+    def get_absolute_image_url(self):
+        if self.image and hasattr(self.image, 'url'):
+            return self.image.url
+        else:
+            return '/path/to/default/avatar'
     
 class News(models.Model):
     title = models.CharField(max_length=255, unique=True)

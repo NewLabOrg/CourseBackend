@@ -9,6 +9,7 @@ services:
     environment:
       POSTGRES_USER: myuser
       POSTGRES_DB: mydb
+      POSTGRES_PASSWORD: postrgres
     env_file:
       - ./.env
     ports:

@@ -19,7 +19,7 @@ from .models import Profile
 
 from projects import models
 
-
+ 
 class UserType(DjangoObjectType):
     website = graphene.String()
     bio = graphene.String()
@@ -28,6 +28,7 @@ class UserType(DjangoObjectType):
     class Meta:
         model = get_user_model()
         fields = "__all__"
+       
 
     def resolve_website(self, info):
         if hasattr(self, 'profile'):
@@ -49,20 +50,29 @@ class UserType(DjangoObjectType):
 class UploadProfilePic(graphene.Mutation):
     class Arguments:
         file = Upload(required=True)
+        userId = graphene.ID(required=True)
 
     success = graphene.Boolean()
     url = graphene.String()
-    
-    def mutate(self, info, file, **kwargs):
-        user = info.context.user
-        profile, created = Profile.objects.get_or_create(user=user)
 
-        filename = f"{uuid.uuid4()}-{file.name}"
-        profile.image.save(filename, ContentFile(file.read()), save=True)
+    @staticmethod
+    def mutate(root, info, file, userId):
+        if not file:
+            raise Exception('Файл не был предоставлен')
         
-        url = info.context.build_absolute_uri(profile.image.url)
+        if not hasattr(file, 'name'):
+            raise Exception("Полученный объект не содержит атрибута 'name'")
 
-        return UploadProfilePic(success=True, url=url)
+        try:
+            user = User.objects.get(pk=userId)
+            profile, created = Profile.objects.get_or_create(user=user)
+            filename = f"{uuid.uuid4()}-{file.name}"
+            profile.image.save(filename, ContentFile(file.read()), save=True)
+            url = info.context.build_absolute_uri(profile.image.url)
+            return UploadProfilePic(success=True, url=url)
+        except User.DoesNotExist:
+            raise Exception('Пользователь не найден')
+
 
 class AuthorType(DjangoObjectType):
     profile_pic_url = String()
@@ -168,68 +178,54 @@ class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
     
 
 
-class CreateUser(Mutation):
-    user = Field(UserType)
+class CreateUser(graphene.Mutation):
+    user = graphene.Field(UserType)
 
     class Arguments:
-        username = String(required=True)
-        password = String(required=True)
-        email = String(required=True)
-        firstname = String(required=True)
-        lastname = String(required=True)
-        website = String()
-        bio = String()
+        username = graphene.String(required=True)
+        password = graphene.String(required=True)
+        email = graphene.String(required=True)
+        firstname = graphene.String(required=True)
+        lastname = graphene.String(required=True)
+        website = graphene.String()
+        bio = graphene.String()
         image = Upload()
 
     @transaction.atomic
-    def mutate(self, info, username, password, email, firstname, lastname, website=None, bio=None,  image=None):
+    def mutate(self, info, username, password, email, firstname, lastname, website=None, bio=None, image=None):
         user = User(
             username=username,
-            password=make_password(password),
             email=email,
             first_name=firstname,
             last_name=lastname,
         )
+        user.set_password(password)
         user.save()
 
-        author = models.Profile(user=user)  
-        author.save()
+        profile = Profile(user=user, website=website, bio=bio)
 
-        profile = models.Profile(user=user, website=website, bio=bio)
         if image:
-            profile.image = image
+            filename = f'{uuid.uuid4()}{os.path.splitext(image.name)[-1]}'
+            profile.image.save(filename, ContentFile(image.read()), save=True)
+
         profile.save()
 
         return CreateUser(user=user)
-
+    
+    
+class UploadFile(graphene.Mutation):
     class Arguments:
-        username = String(required=True)
-        password = String(required=True)
-        email = String(required=True)
-        firstname = String(required=True)
-        lastname = String(required=True)
-        website = String()
-        bio = String()
+        file = Upload(required=True)
 
-    @transaction.atomic
-    def mutate(self, info, username, password, email, firstname, lastname, website=None, bio=None):
-        user = User(
-            username=username,
-            password=make_password(password),
-            email=email,
-            first_name=firstname,
-            last_name=lastname,
-        )
-        user.save()
+    success = graphene.Boolean()
 
-        profile = models.Profile(user=user)
-        profile.save()
+    def mutate(self, info, file, **kwargs):
+        return UploadFile(success=True)
 
-        profile.website = website
-        profile.bio = bio
-        profile.save()
-        
-        return CreateUser(user=user)
+class Mutation(graphene.ObjectType):
+    upload_file = UploadFile.Field()
+
+schema = graphene.Schema(mutation=Mutation)
 class Mutation(graphene.ObjectType):
     create_user = CreateUser.Field()
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
