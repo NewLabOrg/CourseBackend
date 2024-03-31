@@ -91,7 +91,7 @@ class NewsType(DjangoObjectType):
 
     class Meta:
         model = models.News
-        fields = ("title", "slug", "subtitle", "image", "image_url")
+        fields = ( "title", "slug", "subtitle", "image", "image_url")
     
     def resolve_image_url(self, info):
         if self.image:
@@ -99,16 +99,56 @@ class NewsType(DjangoObjectType):
         return ''
     
 class PostType(DjangoObjectType):
-    image_url = String()
+    image_url = graphene.String()
 
     class Meta:
         model = models.Post
-        fields = ("title", "slug", "subtitle", "body", "meta_description", "date_created", "date_modified", "publish_date", "published", "image", "image_url", "author", "tags")
+        fields = ('id', "title", "slug", "subtitle", "body", "meta_description", "date_created", "date_modified", "publish_date", "published", "image", "image_url", "author", "tags")
 
     def resolve_image_url(self, info):
         if self.image:
             return info.context.build_absolute_uri(self.image.url)
         return ''
+
+class UpdatePost(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        title = graphene.String()
+        slug = graphene.String()
+        subtitle = graphene.String()
+        body = graphene.String()
+        meta_description = graphene.String()
+        publish_date = graphene.DateTime()
+        published = graphene.Boolean()
+        image = Upload()
+        author = graphene.ID()
+        tags = graphene.List(graphene.ID)
+
+    post = graphene.Field(PostType)
+
+    @staticmethod
+    def mutate(root, info, id, **kwargs):
+        try:
+            post = Post.objects.get(pk=id)
+        except Post.DoesNotExist:
+            raise Exception('Post not found')
+            
+        if 'image' in kwargs:   
+            image = kwargs.pop('image')
+            post.image.save(image.name, image, save=False)
+            url = info.context.build_absolute_uri(Post.image.url)
+
+            if 'tags' in kwargs:
+                tag_ids = kwargs.pop('tags')
+                tags = Tag.objects.filter(id__in=tag_ids)
+                post.tags.set(tags)
+            
+            for attr, value in kwargs.items():
+                setattr(post, attr, value)
+            
+        post.save()
+        return UpdatePost(post=post)
+
 
 class TagType(DjangoObjectType):
     class Meta: 
@@ -232,5 +272,6 @@ class Mutation(graphene.ObjectType):
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
     upload_profile_pic = UploadProfilePic.Field()
+    update_post = UpdatePost.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
