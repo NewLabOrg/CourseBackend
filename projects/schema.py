@@ -14,12 +14,14 @@ from django.contrib.auth.hashers import make_password
 from graphene_file_upload.scalars import Upload
 from django.core.files.base import ContentFile
 import uuid
-from .models import Profile
+from .models import Post, Tag, Profile
+from django.utils.text import slugify
+from django.utils import timezone
 
 
 from projects import models
 
- 
+current_time = timezone.now()
 class UserType(DjangoObjectType):
     website = graphene.String()
     bio = graphene.String()
@@ -110,45 +112,61 @@ class PostType(DjangoObjectType):
             return info.context.build_absolute_uri(self.image.url)
         return ''
 
-class UpdatePost(graphene.Mutation):
+
+
+
+class CreatePost(graphene.Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
-        title = graphene.String()
-        slug = graphene.String()
+        title = graphene.String(required=True)
         subtitle = graphene.String()
-        body = graphene.String()
-        meta_description = graphene.String()
-        publish_date = graphene.DateTime()
-        published = graphene.Boolean()
-        image = Upload()
-        author = graphene.ID()
-        tags = graphene.List(graphene.ID)
+        body = graphene.String(required=True)
+        author_username = graphene.String(required=True)
+        tags = graphene.List(graphene.String)
+        image = Upload()  
 
     post = graphene.Field(PostType)
 
     @staticmethod
-    def mutate(root, info, id, **kwargs):
+    def mutate(root, info, title, subtitle, body, author_username, tags=None, image=None):
+       
+        slug = slugify(title)
+        
+        num = 1
+        original_slug = slug
+        while Post.objects.filter(slug=slug).exists():
+            slug = f"{original_slug}-{num}"
+            num += 1
+
+        
+        meta_description = body[:150] if len(body) > 150 else body
+
+      
         try:
-            post = Post.objects.get(pk=id)
-        except Post.DoesNotExist:
-            raise Exception('Post not found')
-            
-        if 'image' in kwargs:   
-            image = kwargs.pop('image')
-            post.image.save(image.name, image, save=False)
-            url = info.context.build_absolute_uri(Post.image.url)
+            author_profile = Profile.objects.get(user__username=author_username)
+        except Profile.DoesNotExist:
+            raise Exception('Автор не найден')
 
-            if 'tags' in kwargs:
-                tag_ids = kwargs.pop('tags')
-                tags = Tag.objects.filter(id__in=tag_ids)
-                post.tags.set(tags)
-            
-            for attr, value in kwargs.items():
-                setattr(post, attr, value)
-            
+       
+        post = Post(
+            title=title,
+            subtitle=subtitle,
+            slug=slug,
+            body=body,
+            meta_description=meta_description,
+            publish_date=timezone.now(),  
+            published=True,  
+            author=author_profile,
+            image=image if image else None
+        )
         post.save()
-        return UpdatePost(post=post)
 
+        
+        if tags:
+            for tag_name in tags:
+                tag, created = Tag.objects.get_or_create(name=tag_name)
+                post.tags.add(tag)
+
+        return CreatePost(post=post)
 
 class TagType(DjangoObjectType):
     class Meta: 
@@ -272,6 +290,6 @@ class Mutation(graphene.ObjectType):
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
     upload_profile_pic = UploadProfilePic.Field()
-    update_post = UpdatePost.Field()
+    create_post = CreatePost.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

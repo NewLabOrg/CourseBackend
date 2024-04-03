@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from graphene_file_upload.django import FileUploadGraphQLView
 from projects.views import file_upload
+from graphene_file_upload.django import FileUploadGraphQLView
 
 class CustomGraphQLView(FileUploadGraphQLView):
     @jwt_cookie
